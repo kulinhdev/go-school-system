@@ -17,9 +17,18 @@ type AuthController struct {
 }
 
 func NewAuthController(DB *gorm.DB) AuthController {
-	return AuthController{DB}
+	return AuthController{DB: DB}
 }
 
+// RegisterUser registers a new user.
+// @Summary Register a new user
+// @ID register-user
+// @Tags User - Authentication
+// @Accept json
+// @Produce json
+// @Param user body models.UserRegister true "User data"
+// @Success 201 {object} models.UserResponse
+// @Router /api/auth/register [post]
 func (ctl *AuthController) RegisterUser(ctx *gin.Context) {
 	var payload *models.UserRegister
 
@@ -52,11 +61,12 @@ func (ctl *AuthController) RegisterUser(ctx *gin.Context) {
 
 	result := ctl.DB.Create(&newUser)
 
-	if result.Error != nil && strings.Contains(result.Error.Error(), "duplicate key value violates unique") {
-		ctx.JSON(http.StatusConflict, gin.H{"status": "error", "message": "User with that email already exists"})
-		return
-	} else if result.Error != nil {
-		ctx.JSON(http.StatusBadGateway, gin.H{"status": "error", "message": result.Error.Error()})
+	if result.Error != nil {
+		if strings.Contains(result.Error.Error(), "duplicate key value violates unique") {
+			ctx.JSON(http.StatusConflict, gin.H{"status": "error", "message": "User with that email already exists"})
+		} else {
+			ctx.JSON(http.StatusBadGateway, gin.H{"status": "error", "message": result.Error.Error()})
+		}
 		return
 	}
 
@@ -74,6 +84,15 @@ func (ctl *AuthController) RegisterUser(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, gin.H{"status": "success", "data": gin.H{"user": userResponse}})
 }
 
+// LoginUser logs in a user.
+// @Summary Log in a user
+// @ID login-user
+// @Tags User - Authentication
+// @Accept json
+// @Produce json
+// @Param user body models.UserLogin true "User login data"
+// @Success 200 {object} models.UserResponse
+// @Router /api/auth/login [post]
 func (ctl *AuthController) LoginUser(ctx *gin.Context) {
 	var payload *models.UserLogin
 
@@ -94,10 +113,8 @@ func (ctl *AuthController) LoginUser(ctx *gin.Context) {
 		return
 	}
 
-	// Get configs
 	config := initializers.Config
 
-	// Generate Tokens
 	accessToken, err := helpers.CreateToken(config.AccessTokenExpiresIn, user.ID, config.AccessTokenPrivateKey)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error()})
@@ -117,8 +134,16 @@ func (ctl *AuthController) LoginUser(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"status": "success", "access_token": accessToken})
 }
 
+// RefreshAccessToken refreshes the access token.
+// @Summary Refresh the access token
+// @ID refresh-access-token
+// @Tags User - Authentication
+// @Accept json
+// @Produce json
+// @Success 200 {object} models.UserResponse
+// @Router /api/auth/refresh [get]
 func (ctl *AuthController) RefreshAccessToken(ctx *gin.Context) {
-	message := "could not refresh access token: %s!"
+	message := "Could not refresh access token: %s!"
 
 	cookie, err := ctx.Cookie("refresh_token")
 
@@ -128,7 +153,6 @@ func (ctl *AuthController) RefreshAccessToken(ctx *gin.Context) {
 		return
 	}
 
-	// Get configs
 	config := initializers.Config
 
 	sub, err := helpers.ValidateToken(cookie, config.RefreshTokenPublicKey)
@@ -158,10 +182,17 @@ func (ctl *AuthController) RefreshAccessToken(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"status": "success", "access_token": accessToken})
 }
 
+// LogoutUser logs out a user.
+// @Summary Log out a user
+// @ID logout-user
+// @Tags User - Authentication
+// @Accept json
+// @Produce json
+// @Router /api/auth/logout [get]
 func (ctl *AuthController) LogoutUser(ctx *gin.Context) {
 	ctx.SetCookie("access_token", "", -1, "/", "localhost", false, true)
 	ctx.SetCookie("refresh_token", "", -1, "/", "localhost", false, true)
 	ctx.SetCookie("logged_in", "", -1, "/", "localhost", false, false)
 
-	ctx.JSON(http.StatusOK, gin.H{"status": "success"})
+	ctx.JSON(http.StatusOK, gin.H{"status": "Logged out success!"})
 }

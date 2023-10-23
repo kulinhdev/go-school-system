@@ -6,21 +6,9 @@ import (
 	"github.com/gin-gonic/gin"
 	controllers "github.com/kulinhdev/serentyspringsedu/controller"
 	"github.com/kulinhdev/serentyspringsedu/initializers"
+	"github.com/kulinhdev/serentyspringsedu/middlewares"
 	"github.com/kulinhdev/serentyspringsedu/models"
 )
-
-func registerAPIRoutes(router *gin.Engine) {
-	// Get all routes
-	studentController := controllers.NewStudentController(models.DB)
-	routeStudent := NewRouteStudent(studentController)
-	authController := controllers.NewAuthController(models.DB)
-	routeAuth := NewRouteAuth(authController)
-
-	// Register routes
-	apiRoute := router.Group("/api")
-	routeStudent.Routes(apiRoute)
-	routeAuth.Routes(apiRoute)
-}
 
 func Initialize() {
 	router := gin.Default()
@@ -34,8 +22,32 @@ func Initialize() {
 	}
 	router.Use(cors.New(corConfig))
 
+	// Get all routes
+	studentController := controllers.NewStudentController(models.DB)
+	authController := controllers.NewAuthController(models.DB)
+
 	// Register all routes
-	registerAPIRoutes(router)
+	apiRoute := router.Group("/api")
+	{
+
+		studentRoute := apiRoute.Group("/students")
+		studentRoute.Use(middlewares.DeserializeUser())
+		{
+			studentRoute.GET("/", studentController.List)
+			studentRoute.POST("/", studentController.Create)
+			studentRoute.GET("/:id", studentController.FindById)
+			studentRoute.PUT("/:id", studentController.Update)
+			studentRoute.DELETE("/:id", studentController.Delete)
+		}
+
+		authRoute := apiRoute.Group("auth")
+		{
+			authRoute.POST("/register", authController.RegisterUser)
+			authRoute.POST("/login", authController.LoginUser)
+			authRoute.GET("/refresh", middlewares.DeserializeUser(), authController.RefreshAccessToken)
+			authRoute.POST("/logout", middlewares.DeserializeUser(), authController.LogoutUser)
+		}
+	}
 
 	// Listen port:9000
 	err := router.Run(fmt.Sprintf(":%s", initializers.Config.RunPort))

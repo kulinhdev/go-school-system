@@ -9,8 +9,6 @@ import (
 	"time"
 )
 
-var jwtKey = []byte("LVMz9Ze4vG8hC5naqihFLgdAqSBaCHiaM3jVpdLJvY2xWc1PkB50kAmCgAHcLewiR6cBSdC6wpLYx9bSj2Dnz3j5UwP1eb9ESD79kzwawxeTNKj78rgbnbPA")
-
 type JWTClaim struct {
 	Username string `json:"username"`
 	Email    string `json:"email"`
@@ -31,20 +29,6 @@ func CheckPassword(providedPassword string, userPassword string) error {
 		return err
 	}
 	return nil
-}
-
-func GenerateJWT(email string, username string) (tokenString string, err error) {
-	expirationTime := time.Now().Add(1 * time.Hour)
-	claims := &JWTClaim{
-		Email:    email,
-		Username: username,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: expirationTime.Unix(),
-		},
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err = token.SignedString(jwtKey)
-	return
 }
 
 func CreateToken(ttl time.Duration, payload interface{}, privateKey string) (string, error) {

@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/kulinhdev/serentyspringsedu/models"
 	"gorm.io/gorm"
@@ -16,61 +15,101 @@ func NewStudentController(DB *gorm.DB) StudentController {
 	return StudentController{DB}
 }
 
-// [GET] /api/students
-func (crl *StudentController) List(c *gin.Context) {
+// List retrieves a list of students.
+// @Summary Retrieve a list of students
+// @ID list-students
+// @Tags Students
+// @Accept json
+// @Produce json
+// @Success 200 {array} models.Student
+// @Router /api/students [get]
+func (ctl *StudentController) List(ctx *gin.Context) {
 	var students []models.Student
-	crl.DB.Find(&students)
-	c.JSON(http.StatusOK, students)
+	ctl.DB.Find(&students)
+	ctx.JSON(http.StatusOK, students)
 }
 
-// [POST] /api/students
-func (crl *StudentController) Create(c *gin.Context) {
+// Create creates a new student.
+// @Summary Create a new student
+// @ID create-student
+// @Tags Students
+// @Accept json
+// @Produce json
+// @Param student body models.Student true "Student data"
+// @Success 201 {object} models.Student
+// @Router /api/students [post]
+func (ctl *StudentController) Create(ctx *gin.Context) {
 	var student models.Student
-	if err := c.ShouldBindJSON(&student); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := ctx.ShouldBindJSON(&student); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	crl.DB.Create(&student)
-	c.JSON(http.StatusCreated, student)
+	ctl.DB.Create(&student)
+	ctx.JSON(http.StatusCreated, student)
 }
 
-// [GET] /api/students/:id
-func (crl *StudentController) FindById(c *gin.Context) {
-	id := c.Param("id")
+// FindById retrieves a student by ID.
+// @Summary Retrieve a student by ID
+// @ID find-student-by-id
+// @Tags Students
+// @Accept json
+// @Produce json
+// @Param id path int true "Student ID"
+// @Success 200 {object} models.Student
+// @Router /api/students/{id} [get]
+func (ctl *StudentController) FindById(ctx *gin.Context) {
+	id := ctx.Param("id")
 	var student models.Student
-	if err := crl.DB.Where("id = ?", id).First(&student).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("Record with Id=%s not found", id)})
+	if err := ctl.DB.Where("id = ?", id).First(&student).Error; err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "Record not found"})
 		return
 	}
-	c.JSON(http.StatusOK, student)
+	ctx.JSON(http.StatusOK, student)
 }
 
-// [PUT] /api/students/:id
-func (crl *StudentController) Update(c *gin.Context) {
-	id := c.Param("id")
+// Update updates a student by ID.
+// @Summary Update a student by ID
+// @ID update-student-by-id
+// @Tags Students
+// @Accept json
+// @Produce json
+// @Param id path int true "Student ID"
+// @Param student body models.Student true "Student data"
+// @Success 200 {object} models.Student
+// @Router /api/students/{id} [put]
+func (ctl *StudentController) Update(ctx *gin.Context) {
+	id := ctx.Param("id")
 	var student models.Student
-	if err := crl.DB.Where("id = ?", id).First(&student).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Record not found"})
+	if err := ctl.DB.Where("id = ?", id).First(&student).Error; err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "Record not found"})
 		return
 	}
 
-	if err := c.ShouldBindJSON(&student); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := ctx.ShouldBindJSON(&student); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	crl.DB.Save(&student)
-	c.JSON(http.StatusOK, student)
+	ctl.DB.Save(&student)
+	ctx.JSON(http.StatusOK, student)
 }
 
-// [DELETE] /api/students/:id
-func (crl *StudentController) Delete(c *gin.Context) {
-	id := c.Param("id")
+// Delete deletes a student by ID.
+// @Summary Delete a student by ID
+// @ID delete-student-by-id
+// @Tags Students
+// @Accept json
+// @Produce json
+// @Param id path int true "Student ID"
+// @Success 204
+// @Router /api/students/{id} [delete]
+func (ctl *StudentController) Delete(ctx *gin.Context) {
+	id := ctx.Param("id")
 	var student models.Student
-	if err := crl.DB.Where("id = ?", id).First(&student).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Record not found"})
+	if err := ctl.DB.Where("id = ?", id).First(&student).Error; err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "Record not found"})
 		return
 	}
-	crl.DB.Delete(&student)
-	c.JSON(http.StatusNoContent, gin.H{"success": "Delete record success!"})
+	ctl.DB.Delete(&student)
+	ctx.JSON(http.StatusNoContent, gin.H{"success": "Delete record success!"})
 }
