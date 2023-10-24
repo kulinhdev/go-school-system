@@ -45,6 +45,6 @@ type UserRegister struct {
 }
 
 type UserLogin struct {
-	Email    string
-	Password string
+	Email    string `form:"email" json:"email" binding:"required,email"`
+	Password string `form:"password" json:"password" binding:"required"`
 }

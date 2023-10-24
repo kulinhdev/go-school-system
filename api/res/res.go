@@ -1,4 +1,4 @@
-package api
+package res
 
 import (
 	"github.com/gin-gonic/gin"
@@ -10,11 +10,17 @@ const (
 	StatusError   = 0
 )
 
+type ApiError struct {
+	Field string
+	Msg   string
+}
+
 // ErrorResponse represents the structure of an error response.
 type ErrorResponse struct {
-	Status  int    `json:"status"`
-	Code    string `json:"code"`
-	Message string `json:"message,omitempty"`
+	Status  int         `json:"status"`
+	Code    string      `json:"code"`
+	Message string      `json:"message,omitempty"`
+	Data    interface{} `json:"data"`
 }
 
 // SuccessResponse represents the structure of a success response.
@@ -25,11 +31,12 @@ type SuccessResponse struct {
 }
 
 // ResponseError sends a generic error response.
-func ResponseError(c *gin.Context, code int, message string) {
+func ResponseError(c *gin.Context, code int, message string, payload interface{}) {
 	c.JSON(code, ErrorResponse{
 		Status:  StatusError,
 		Code:    strconv.Itoa(code),
 		Message: message,
+		Data:    payload,
 	})
 }
 

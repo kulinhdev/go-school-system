@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/kulinhdev/serentyspringsedu/api/res"
 	controllers "github.com/kulinhdev/serentyspringsedu/controller"
 	"github.com/kulinhdev/serentyspringsedu/initializers"
 	"github.com/kulinhdev/serentyspringsedu/middlewares"
 	"github.com/kulinhdev/serentyspringsedu/models"
+	"net/http"
 )
 
 func Initialize() {
@@ -48,6 +50,10 @@ func Initialize() {
 			authRoute.POST("/logout", middlewares.DeserializeUser(), authController.LogoutUser)
 		}
 	}
+
+	router.NoRoute(func(ctx *gin.Context) {
+		res.ResponseError(ctx, http.StatusNotFound, "Page not found", nil)
+	})
 
 	// Listen port:9000
 	err := router.Run(fmt.Sprintf(":%s", initializers.Config.RunPort))

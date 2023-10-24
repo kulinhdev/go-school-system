@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"fmt"
+	"github.com/kulinhdev/serentyspringsedu/api/res"
 	"net/http"
 	"strings"
 
@@ -33,18 +34,19 @@ func (ctl *AuthController) RegisterUser(ctx *gin.Context) {
 	var payload *models.UserRegister
 
 	if err := ctx.ShouldBindJSON(&payload); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error()})
+
+		res.ResponseError(ctx, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
 	if payload.Password != payload.PasswordConfirm {
-		ctx.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Passwords do not match"})
+		res.ResponseError(ctx, http.StatusBadRequest, "Passwords do not match", nil)
 		return
 	}
 
 	hashedPassword, err := helpers.HashPassword(payload.Password)
 	if err != nil {
-		ctx.JSON(http.StatusBadGateway, gin.H{"status": "error", "message": err.Error()})
+		res.ResponseError(ctx, http.StatusBadGateway, err.Error(), nil)
 		return
 	}
 
@@ -63,9 +65,9 @@ func (ctl *AuthController) RegisterUser(ctx *gin.Context) {
 
 	if result.Error != nil {
 		if strings.Contains(result.Error.Error(), "duplicate key value violates unique") {
-			ctx.JSON(http.StatusConflict, gin.H{"status": "error", "message": "User with that email already exists"})
+			res.ResponseError(ctx, http.StatusConflict, "User with that email already exists", nil)
 		} else {
-			ctx.JSON(http.StatusBadGateway, gin.H{"status": "error", "message": result.Error.Error()})
+			res.ResponseError(ctx, http.StatusBadGateway, result.Error.Error(), nil)
 		}
 		return
 	}
@@ -81,7 +83,7 @@ func (ctl *AuthController) RegisterUser(ctx *gin.Context) {
 		CreatedAt: newUser.CreatedAt,
 		UpdatedAt: newUser.UpdatedAt,
 	}
-	ctx.JSON(http.StatusCreated, gin.H{"status": "success", "data": gin.H{"user": userResponse}})
+	res.ResponseSuccess(ctx, http.StatusCreated, gin.H{"user": userResponse})
 }
 
 // LoginUser logs in a user.
@@ -97,19 +99,19 @@ func (ctl *AuthController) LoginUser(ctx *gin.Context) {
 	var payload *models.UserLogin
 
 	if err := ctx.ShouldBindJSON(&payload); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error()})
+		res.ResponseError(ctx, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
 	var user models.User
 	result := ctl.DB.First(&user, "email = ?", strings.ToLower(payload.Email))
 	if result.Error != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid email!"})
+		res.ResponseError(ctx, http.StatusBadRequest, "Invalid email!", nil)
 		return
 	}
 
 	if err := helpers.CheckPassword(payload.Password, user.Password); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Password is not correct!"})
+		res.ResponseError(ctx, http.StatusBadRequest, "Password is not correct!", nil)
 		return
 	}
 
@@ -117,13 +119,13 @@ func (ctl *AuthController) LoginUser(ctx *gin.Context) {
 
 	accessToken, err := helpers.CreateToken(config.AccessTokenExpiresIn, user.ID, config.AccessTokenPrivateKey)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error()})
+		res.ResponseError(ctx, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
 	refreshToken, err := helpers.CreateToken(config.RefreshTokenExpiresIn, user.ID, config.RefreshTokenPrivateKey)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error()})
+		res.ResponseError(ctx, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
@@ -131,7 +133,7 @@ func (ctl *AuthController) LoginUser(ctx *gin.Context) {
 	ctx.SetCookie("refresh_token", refreshToken, config.RefreshTokenMaxAge*60, "/", "localhost", false, true)
 	ctx.SetCookie("logged_in", "true", config.AccessTokenMaxAge*60, "/", "localhost", false, false)
 
-	ctx.JSON(http.StatusOK, gin.H{"status": "success", "access_token": accessToken})
+	res.ResponseSuccess(ctx, http.StatusOK, gin.H{"access_token": accessToken})
 }
 
 // RefreshAccessToken refreshes the access token.
@@ -149,7 +151,7 @@ func (ctl *AuthController) RefreshAccessToken(ctx *gin.Context) {
 
 	if err != nil {
 		errorMessage := fmt.Sprintf(message, err)
-		ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{"status": "error", "message": errorMessage})
+		res.ResponseError(ctx, http.StatusForbidden, errorMessage, nil)
 		return
 	}
 
@@ -158,28 +160,28 @@ func (ctl *AuthController) RefreshAccessToken(ctx *gin.Context) {
 	sub, err := helpers.ValidateToken(cookie, config.RefreshTokenPublicKey)
 	if err != nil {
 		errorMessage := fmt.Sprintf(message, err)
-		ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{"status": "error", "message": errorMessage})
+		res.ResponseError(ctx, http.StatusForbidden, errorMessage, nil)
 		return
 	}
 
 	var user models.User
 	result := ctl.DB.First(&user, "id = ?", fmt.Sprint(sub))
 	if result.Error != nil {
-		ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{"status": "error", "message": "the user belonging to this token no longer exists"})
+		res.ResponseError(ctx, http.StatusForbidden, "the user belonging to this token no longer exists", nil)
 		return
 	}
 
 	accessToken, err := helpers.CreateToken(config.AccessTokenExpiresIn, user.ID, config.AccessTokenPrivateKey)
 	if err != nil {
 		errorMessage := fmt.Sprintf(message, err)
-		ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{"status": "error", "message": errorMessage})
+		res.ResponseError(ctx, http.StatusForbidden, errorMessage, nil)
 		return
 	}
 
 	ctx.SetCookie("access_token", accessToken, config.AccessTokenMaxAge*60, "/", "localhost", false, true)
 	ctx.SetCookie("logged_in", "true", config.AccessTokenMaxAge*60, "/", "localhost", false, false)
 
-	ctx.JSON(http.StatusOK, gin.H{"status": "success", "access_token": accessToken})
+	res.ResponseSuccess(ctx, http.StatusOK, gin.H{"access_token": accessToken})
 }
 
 // LogoutUser logs out a user.
@@ -194,5 +196,5 @@ func (ctl *AuthController) LogoutUser(ctx *gin.Context) {
 	ctx.SetCookie("refresh_token", "", -1, "/", "localhost", false, true)
 	ctx.SetCookie("logged_in", "", -1, "/", "localhost", false, false)
 
-	ctx.JSON(http.StatusOK, gin.H{"status": "Logged out success!"})
+	res.ResponseSuccess(ctx, http.StatusOK, "Logged out success!")
 }
