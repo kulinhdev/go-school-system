@@ -18,14 +18,15 @@ func msgForTag(tag string) string {
 	return ""
 }
 
-func CustomMessageErrors(err error, ve validator.ValidationErrors) []res.ApiError {
-	if errors.As(err, &ve) {
-		out := make([]res.ApiError, len(ve))
-		for i, fe := range ve {
-			out[i] = res.ApiError{Field: fe.Field(), Msg: msgForTag(fe.Tag())}
-		}
-		return out
-	} else {
+func CustomMessageErrors(err error) []res.ApiError {
+	var ve validator.ValidationErrors
+	if !errors.As(err, &ve) {
 		return nil
 	}
+
+	out := make([]res.ApiError, len(ve))
+	for i, fe := range ve {
+		out[i] = res.ApiError{Field: fe.Field(), Msg: msgForTag(fe.Tag())}
+	}
+	return out
 }
