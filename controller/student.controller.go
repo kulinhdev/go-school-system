@@ -2,9 +2,7 @@ package controllers
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/gin-gonic/gin/binding"
 	_ "github.com/gin-gonic/gin/binding"
-	"github.com/go-playground/validator/v10"
 	"github.com/kulinhdev/serentyspringsedu/api/res"
 	"github.com/kulinhdev/serentyspringsedu/helpers"
 	"github.com/kulinhdev/serentyspringsedu/models"
@@ -48,9 +46,8 @@ func (ctl *StudentController) List(ctx *gin.Context) {
 // @Router /api/students [post]
 func (ctl *StudentController) Create(ctx *gin.Context) {
 	var student models.Student
-	var ve validator.ValidationErrors
-	if err := ctx.ShouldBindBodyWith(&student, binding.JSON); err != nil {
-		ve := helpers.CustomMessageErrors(err, ve)
+	if err := ctx.ShouldBindJSON(&student); err != nil {
+		ve := helpers.CustomMessageErrors(err)
 		res.ResponseError(ctx, http.StatusBadRequest, err.Error(), gin.H{"errors": ve})
 		return
 	}
